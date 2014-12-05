@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from os import path
-from random import choice
+from random import choice, randint
 from string import letters
 from sys import path as pythonpath
 from time import time
@@ -24,8 +24,7 @@ class TunnelClient(DispersyExperimentScriptClient):
         self.community_class = TunnelCommunity
 
         tunnel_settings = TunnelSettings()
-        tunnel_settings.max_circuits = 0
-        tunnel_settings.socks_listen_port = -1
+        tunnel_settings.socks_listen_ports = [randint(1000, 65535) for _ in range(5)]
         self.set_community_kwarg('settings', tunnel_settings)
 
         self.monitor_circuits_lc = None
@@ -36,7 +35,7 @@ class TunnelClient(DispersyExperimentScriptClient):
 
     def build_circuits(self):
         msg("build_circuits")
-        self._community.settings.max_circuits = 8
+        self._community.circuits_needed[3] = 8
 
     def online(self):
         DispersyExperimentScriptClient.online(self)
@@ -51,8 +50,9 @@ class TunnelClient(DispersyExperimentScriptClient):
             self.monitor_circuits_lc = None
 
     def monitor_circuits(self):
-        nr_circuits = len(self._community.active_circuits) if self._community else 0
-        self._prev_scenario_statistics = self.print_on_change("scenario-statistics", self._prev_scenario_statistics, {'nr_circuits': nr_circuits})
+        nr_circuits = len(self._community.active_data_circuits()) if self._community else 0
+        self._prev_scenario_statistics = self.print_on_change("scenario-statistics", self._prev_scenario_statistics,
+                                                              {'nr_circuits': nr_circuits})
 
 
 if __name__ == '__main__':
