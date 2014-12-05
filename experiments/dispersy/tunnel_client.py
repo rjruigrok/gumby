@@ -3,11 +3,13 @@
 from os import path, getpid
 from random import choice, randint
 from string import letters
-from sys import path as pythonpath
+from sys import path as pythonpath, stdout
 from time import time, sleep
 
+from twisted.python.threadable import isInIOThread
 from twisted.internet.task import LoopingCall
 from twisted.python.log import msg
+from threading import Event, Thread
 
 from gumby.experiments.dispersyclient import DispersyExperimentScriptClient, main
 
@@ -19,13 +21,9 @@ pythonpath.append(path.abspath(path.join(BASE_DIR, "./tribler")))
 class TunnelClient(DispersyExperimentScriptClient):
 
     def __init__(self, *argv, **kwargs):
-        from Tribler.community.tunnel.community import TunnelCommunity, TunnelSettings
+        from Tribler.community.tunnel.community import TunnelCommunity
         DispersyExperimentScriptClient.__init__(self, *argv, **kwargs)
         self.community_class = TunnelCommunity
-
-        self.session = self.start_tribler()
-        self.session.set_anon_proxy_settings(2, ("127.0.0.1", self.session.get_tunnel_community_socks5_listen_ports()))
-        self.set_community_kwarg('session', self.session)
 
         self.monitor_circuits_lc = None
         self._prev_scenario_statistics = {}
@@ -33,6 +31,7 @@ class TunnelClient(DispersyExperimentScriptClient):
     def start_tribler(self):
         from Tribler.Core.SessionConfig import SessionStartupConfig
         from Tribler.Core.Session import Session
+        from Tribler.community.tunnel.community import TunnelSettings
         config = SessionStartupConfig()
         config.set_install_dir(path.abspath(path.join(BASE_DIR, "./tribler")))
         config.set_state_dir(path.abspath(path.join(BASE_DIR, ".Tribler-%d") % getpid()))
@@ -46,11 +45,20 @@ class TunnelClient(DispersyExperimentScriptClient):
         config.set_dht_torrent_collecting(False)
         config.set_videoplayer(False)
         session = Session(config)
-        upgrader = session.prestart(u":memory:")
+        print 'Session created', isInIOThread()
+        stdout.flush()
+        upgrader = session.prestart()
         while not upgrader.is_done:
             sleep(0.1)
         session.start()
-        return session
+
+        self.set_community_kwarg('tribler_session', session)
+
+        settings = TunnelSettings()
+        settings.do_test = False
+
+        self.set_community_kwarg('settings', settings)
+        self.session = session
 
     def registerCallbacks(self):
         self.scenario_runner.register(self.build_circuits, 'build_circuits')
@@ -61,10 +69,15 @@ class TunnelClient(DispersyExperimentScriptClient):
 
     def start_dispersy(self, autoload_discovery=True):
         DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery)
-        self.session.lm.dispersy = self._dispersy
-        self.session.set_dispersy_port(self._dispersy.endpoint._port)
+        self.start_tribler()
 
     def online(self):
+        self.session.lm.dispersy = self._dispersy
+        cb = self.session.sessconfig.callback
+        self.session.sessconfig.callback = None
+        self.session.sessconfig.set(u'dispersy', u'dispersy_port', self._dispersy.endpoint._port)
+        self.session.sessconfig.callback = cb
+        self.session.set_anon_proxy_settings(2, ("127.0.0.1", self.session.get_tunnel_community_socks5_listen_ports()))
         DispersyExperimentScriptClient.online(self)
         if not self.monitor_circuits_lc:
             self.monitor_circuits_lc = lc = LoopingCall(self.monitor_circuits)
