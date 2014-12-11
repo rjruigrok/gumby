@@ -68,14 +68,17 @@ class TunnelClient(DispersyExperimentScriptClient):
         self._community.circuits_needed[3] = 8
 
     def start_dispersy(self, autoload_discovery=True):
+        msg("start dispersy")
         DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery)
         self.start_tribler()
 
     def online(self):
+        msg("online")
         self.session.lm.dispersy = self._dispersy
         cb = self.session.sessconfig.callback
         self.session.sessconfig.callback = None
         self.session.sessconfig.set(u'dispersy', u'dispersy_port', self._dispersy.endpoint._port)
+        msg("dispersy on port %d" % (self._dispersy.endpoint._port))
         self.session.sessconfig.callback = cb
         self.session.set_anon_proxy_settings(2, ("127.0.0.1", self.session.get_tunnel_community_socks5_listen_ports()))
         DispersyExperimentScriptClient.online(self)
