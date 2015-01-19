@@ -334,6 +334,10 @@ class BasicExtractor(AbstractHandler):
         print >> self.h_total_connections, "# timestamp timeoffset (num-connections +) (num-walked + ) (num-stumbled + ) (num-intro + ) (sum-incoming-connections+)"
         print >> self.h_total_connections, "#", " ".join(self.communities)
 
+        self.h_relay_bandwidth = open(os.path.join(outputdir, "relay-bandwidth.txt"), "w+")
+        print >> self.h_relay_bandwidth, "# timestamp timeoffset relay-up relay-down"
+        print >> self.h_relay_bandwidth, "#", " ".join(self.communities)
+
         self.h_blstats = open(os.path.join(outputdir, "bl_stat.txt"), "w+")
         print >> self.h_blstats, "# timestamp timeoffset (bl-skip +) (bl-reuse +) (bl-new +)"
         print >> self.h_blstats, "#", " ".join(self.communities)
@@ -356,6 +360,7 @@ class BasicExtractor(AbstractHandler):
         self.h_stat.close()
         self.h_drop.close()
         self.h_total_connections.close()
+        self.h_relay_bandwidth.close()
         self.h_blstats.close()
 
     def filter_line(self, node_nr, line_nr, timestamp, timeoffset, key):
@@ -369,6 +374,8 @@ class BasicExtractor(AbstractHandler):
 
         if "total_down" in value or "total_up" in value:
             print >> self.h_stat, timestamp, timeoffset, self.dispersy_in_out[node_nr][1], self.dispersy_in_out[node_nr][0]
+            print >> self.h_relay_bandwidth, timestamp, timeoffset, self.dispersy_in_out[node_nr][1], self.dispersy_in_out[node_nr][0]
+
 
         if "drop_count" in value:
             self.c_dropped_record = value["drop_count"]
