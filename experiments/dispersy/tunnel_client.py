@@ -70,7 +70,7 @@ class TunnelClient(DispersyExperimentScriptClient):
     def start_dispersy(self, autoload_discovery=True):
         msg("start dispersy")
         DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery)
-        self.start_tribler()
+        #self.start_tribler()
 
     def online(self):
         msg("online")

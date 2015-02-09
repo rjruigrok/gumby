@@ -374,8 +374,8 @@ class BasicExtractor(AbstractHandler):
 
         if "total_down" in value or "total_up" in value:
             print >> self.h_stat, timestamp, timeoffset, self.dispersy_in_out[node_nr][1], self.dispersy_in_out[node_nr][0]
-            print >> self.h_relay_bandwidth, timestamp, timeoffset, self.dispersy_in_out[node_nr][1], self.dispersy_in_out[node_nr][0]
-
+            
+        print >> self.h_relay_bandwidth, timestamp, timeoffset, key
 
         if "drop_count" in value:
             self.c_dropped_record = value["drop_count"]

@@ -1,0 +1,24 @@
+v@0:0 set_master_member 3081a7301006072a8648ce3d020106052b81040027038192000403cbbfd2dfb67a7db66c88988df56f93fa6e7f982f9a6a0fa8898492c8b8cae23e10b159ace60b7047012082a5aa4c6e221d7e58107bb550436d57e046c11ab4f51f0ab18fa8f58d0346cc12d1cc2b61fc86fe5ed192309152e11e3f02489e30c7c971dd989e1ce5030ea0fb77d5220a92cceb567cbc94bc39ba246a42e215b55e9315b543ddeff0209e916f77c0d747
+@0:0 start_session
+@0:5 peertype 0_hop {1}
+@0:5 peertype 1_hop {2}
+@0:5 peertype 2_hop {3}
+@0:5 peertype 3_hop {4}
+@0:5 peertype others {5-1000}
+@0:6 init_experiment 0 {1}
+@0:6 init_experiment 1 {2}
+@0:6 init_experiment 2 {3}
+@0:6 init_experiment 3 {4}
+@0:6 init_experiment 1 {5-335}
+@0:6 init_experiment 2 {336-668}
+@0:6 init_experiment 3 {669-1000}
+@0:50 online
+@0:60 build_circuits 3
+@0:65 annotate start-0-hop
+@0:65 start_download {1}
+@0:120 annotate start-experiment
+@0:120 do_latency_test 100 {2-1000}
+@0:140 start_download {2}
+@0:200 start_download {3}
+@0:260 start_download {4}
+@0:320 stop
