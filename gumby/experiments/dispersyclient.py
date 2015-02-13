@@ -204,7 +204,7 @@ class DispersyExperimentScriptClient(ExperimentClient):
     def set_ignore_exceptions(self, boolean):
         self._strict = not self.str2bool(boolean)
 
-    def start_dispersy(self, autoload_discovery=True):
+    def start_dispersy(self, autoload_discovery=True, use_new_crypto = False):
         msg("Starting dispersy")
         # We need to import the stuff _AFTER_ configuring the logging stuff.
         try:
@@ -231,7 +231,13 @@ class DispersyExperimentScriptClient(ExperimentClient):
             self._master_member = self._dispersy.get_member(private_key=self.master_private_key)
         else:
             self._master_member = self._dispersy.get_member(public_key=self.master_key)
-        self._my_member = self._dispersy.get_member(private_key=self.my_member_private_key)
+     
+        if not use_new_crypto:
+            self._my_member = self._dispersy.get_member(private_key=self.my_member_private_key)
+        else:
+            keypair = self._dispersy.crypto.generate_key(u"curve25519")
+            self._my_member = self._dispersy.get_member(private_key=self._dispersy.crypto.key_to_bin(keypair),)
+
         assert self._master_member
         assert self._my_member
 
