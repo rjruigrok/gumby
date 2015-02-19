@@ -9,6 +9,9 @@ from twisted.internet.task import LoopingCall
 from gumby.experiments.dispersyclient import DispersyExperimentScriptClient, main
 from twisted.python.threadable import isInIOThread
 from posix import getpid
+from Tribler.community.bartercast4.statistics import BartercastStatisticTypes
+from Tribler.dispersy.candidate import Candidate
+from allchannel_client import AllChannelClient
 
 
 # TODO(emilon): Fix this crap
@@ -18,8 +21,9 @@ BASE_DIR = path.abspath(path.join(path.dirname(__file__), '..', '..', '..'))
 #BASE_DIR = path.abspath(path.join(path.dirname(path.realpath(__file__))))
 pythonpath.append(path.abspath(path.join(path.dirname(__file__), '..', '..', '..', "./tribler")))
 
+#from Tribler.Core.Utilities.twisted_thread import reactor, stop_reactor
 
-class TunnelClient(DispersyExperimentScriptClient):
+class TunnelClient(AllChannelClient):
 
     def __init__(self, *argv, **kwargs):
         from Tribler.community.tunnel.tunnel_community import TunnelSettings
@@ -56,8 +60,6 @@ class TunnelClient(DispersyExperimentScriptClient):
         self.config.set_dht_torrent_collecting(False)
         self.config.set_videoplayer(False)
         session = Session(self.config)
-        print 'Session created', isInIOThread()
-        stdout.flush()
         upgrader = session.prestart()
         while not upgrader.is_done:
             sleep(0.1)
@@ -71,16 +73,31 @@ class TunnelClient(DispersyExperimentScriptClient):
         self.set_community_kwarg('settings', settings)
         self.session = session
 
-    def start_dispersy(self, autoload_discovery=True):
-        DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery = autoload_discovery, use_new_crypto = True)
-        self.start_tribler()
+    #def start_dispersy(self, autoload_discovery=True):
+    #   DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery = autoload_discovery, use_new_crypto = True)
+    #    self.start_tribler()
     
+    def start_dispersy(self, crawl=False):
+        DispersyExperimentScriptClient.start_dispersy(self, autoload_discovery = True, use_new_crypto = True)
+        from Tribler.community.bartercast4.community import BarterCommunity
+        #AllChannelClient.start_dispersy(self)
+        if crawl:
+            from Tribler.community.bartercast4.community import BarterCommunityCrawler
+            communities = self._dispersy.define_auto_load(BarterCommunityCrawler, self._my_member, (), load=True)
+        else:
+            communities = self._dispersy.define_auto_load(BarterCommunity, self._my_member, (), load=True)
+
+        for c in communities:
+            if isinstance(c, BarterCommunity):
+                self._bccommunity = c
+        self.start_tribler()
+
     def registerCallbacks(self):
         self.scenario_runner.register(self.setup_seeder, 'setup_seeder')
         self.scenario_runner.register(self.build_circuits, 'build_circuits')
         self.scenario_runner.register(self.create_torrent, 'create_torrent')
         self.scenario_runner.register(self.start_download, 'start_download')
-        
+        self.scenario_runner.register(self.request_stats, 'request_stats')
 
     def build_circuits(self, num):
         self.annotate("build-circuits")
@@ -98,6 +115,14 @@ class TunnelClient(DispersyExperimentScriptClient):
             self.monitor_circuits_lc = lc = LoopingCall(self.monitor_circuits)
             lc.start(5.0, now=True)
 
+    def request_stats(self):
+        if not self._bccommunity:
+            print("problem: barter community not loaded")
+        for c in self.all_vars.itervalues():
+            print '%s: %s' % (str(c['host']), str(c['port']))
+            candidate = Candidate((str(c['host']), c['port']), False)
+            self._bccommunity.create_stats_request(candidate, BartercastStatisticTypes.TUNNELS_RELAY_BYTES_RECEIVED)
+
     def offline(self):
         DispersyExperimentScriptClient.offline(self)
         if self.monitor_circuits_lc:
@@ -108,7 +133,7 @@ class TunnelClient(DispersyExperimentScriptClient):
         from Tribler.Core.TorrentDef import TorrentDef
         
         self.testtorrent = TorrentDef()
-        self.testtorrent.add_content(path.join(BASE_DIR, "tribler", "Tribler", "Test", "data", "video.avi"))
+        self.testtorrent.add_content(path.join(BASE_DIR, "tribler", "test_file"))
         self.testtorrent.set_tracker("http://fake.net/announce")
         self.testtorrent.set_private()  # disable dht
         self.testtorrent.finalize()
@@ -119,7 +144,7 @@ class TunnelClient(DispersyExperimentScriptClient):
         self.annotate("setup-seeder")
         from Tribler.Core.DownloadConfig import DownloadStartupConfig
         dscfg = DownloadStartupConfig()
-        dscfg.set_dest_dir(path.join(BASE_DIR, "tribler", "Tribler", "Test", "data", "video.avi"))  # basedir of the file we are seeding
+        dscfg.set_dest_dir(path.join(BASE_DIR, "tribler", "test_file"))  # basedir of the file we are seeding
         self.session.start_download(self.testtorrent, dscfg)
 
     def start_download(self):
@@ -133,7 +158,7 @@ class TunnelClient(DispersyExperimentScriptClient):
 
         def start_download():
             def cb(ds):
-                print 'Download', self.testtorrent.get_infohash().encode('hex')[:10], '@', ds.get_current_speed('down'), ds.get_progress(), ds.get_status(), sum(ds.get_num_seeds_peers())
+                print 'Download ', self.testtorrent.get_infohash().encode('hex')[:10], '@', ds.get_current_speed('down'), ds.get_progress(), ds.get_status(), sum(ds.get_num_seeds_peers())
                 return 1.0, False
             download = self.session.start_download(self.testtorrent, dscfg)
             download.set_state_callback(cb, delay=1)

@@ -52,12 +52,13 @@ from twisted.python.log import msg, err
 
 # TODO(emilon): Make sure that the automatically chosen one is not this one in case we can avoid this.
 # The reactor needs to be imported after the dispersy client, as it is installing an EPOLL based one.
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, Deferred
 from twisted.internet import reactor
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 import base64
 from traceback import print_exc
+from twisted.python.threadable import isInIOThread
 
 def buffer_online(func):
     def helper(*args, **kargs):
@@ -74,6 +75,7 @@ class DispersyExperimentScriptClient(ExperimentClient):
         self._dispersy = None
         self._community = None
         self._database_file = u"dispersy.db"
+        self._statistics_file = u"statistics.db"
         self._dispersy_exit_status = None
         self._is_joined = False
         self._strict = True
@@ -105,6 +107,7 @@ class DispersyExperimentScriptClient(ExperimentClient):
         self.scenario_runner.register(self.churn, 'churn_pattern')
         self.scenario_runner.register(self.set_community_kwarg)
         self.scenario_runner.register(self.set_database_file)
+        self.scenario_runner.register(self.set_statistics_file)
         self.scenario_runner.register(self.use_memory_database)
         self.scenario_runner.register(self.set_ignore_exceptions)
         self.scenario_runner.register(self.start_dispersy)
@@ -197,6 +200,9 @@ class DispersyExperimentScriptClient(ExperimentClient):
 
     def set_database_file(self, filename):
         self._database_file = unicode(filename)
+
+    def set_statistics_file(self, filename):
+        self._statistics_file = unicode(filename)
 
     def use_memory_database(self):
         self._database_file = u':memory:'
@@ -514,6 +520,27 @@ def main(client_class):
     reactor.run()
     exit(reactor.exitCode)
 
+        
+#    reactor.exitCode = 0
+#    if reactor.running:
+#        if not isInIOThread():
+#            
+#            def after_reactor_shutdown():
+#                reactor.callLater(random() * 10,
+#                              lambda: reactor.connectTCP(environ['SYNC_HOST'], int(environ['SYNC_PORT']), factory))
+#                print "reactor after shutdown"
+#                print "reactor not running"
+#                reactor.run()
+#                exit(reactor.exitCode)
+#            
+#            reactor.addSystemEventTrigger('after', 'shutdown', after_reactor_shutdown)
+#            reactor.callLater(20, reactor.stop)
+#            print "reactor after run"
+#        else:
+#            print("Reactor runs in the event loop thread, which should never be the case.")
+#            exit(1)
+    
+                 
 #
 # dispersyclient.py ends here
 
