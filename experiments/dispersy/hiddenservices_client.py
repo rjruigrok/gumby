@@ -76,8 +76,8 @@ class HiddenServicesClient(TriblerDispersyExperimentScriptClient):
         if not self.security_limiters:
             tunnel_settings.max_traffic = 1024 * 1024 * 1024 * 1024
 
-        tunnel_settings.min_circuits = 3
-        tunnel_settings.max_circuits = 5
+        tunnel_settings.min_circuits = 2
+        tunnel_settings.max_circuits = 3
 
         logging.error("My wan address is %s" % repr(self._dispersy._wan_address[0]))
 
